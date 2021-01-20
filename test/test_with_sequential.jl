@@ -12,6 +12,8 @@ executors = [
     ThreadedTaskPoolEx(ntasks = 2),
     ThreadedTaskPoolEx(basesize = 3),
     ThreadedTaskPoolEx(basesize = 3, ntasks = 2),
+    WorkStealingEx(),
+    WorkStealingEx(basesize = 3),
 ]
 
 if Threads.nthreads() > 1

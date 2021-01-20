@@ -1,6 +1,6 @@
 baremodule FoldsThreadsExtras
 
-export ThreadedNondeterministicEx, ThreadedTaskPoolEx
+export ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
 
 import Transducers
 const FoldsBase = Transducers
@@ -13,9 +13,14 @@ struct ThreadedNondeterministicEx{K} <: FoldsBase.Executor
     kwargs::K
 end
 
+struct WorkStealingEx{K} <: FoldsBase.Executor
+    kwargs::K
+end
+
 module Implementations
 using Base.Threads: @spawn
 
+using Accessors: @set
 using SplittablesBase: amount
 using Transducers:
     @return_if_reduced,
@@ -46,21 +51,21 @@ using Transducers:
     _halve,
     _reduce_basecase,
     _reducingfunction,
-    cancel!,
     combine_right_reduced,
     extract_transducer,
     issmall,
-    retransform,
-    should_abort,
-    splitcontext
+    retransform
+import Transducers: cancel!, should_abort, splitcontext
 
-using ..FoldsThreadsExtras: ThreadedNondeterministicEx, ThreadedTaskPoolEx
+using ..FoldsThreadsExtras: ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
 
 include("utils.jl")
+include("linkedlist.jl")
 include("root_spawners.jl")
 include("dac.jl")
 include("taskpool.jl")
 include("nondeterministic.jl")
+include("workstealing.jl")
 
 function __init__()
     init_primary_task()
