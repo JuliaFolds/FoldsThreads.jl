@@ -66,7 +66,11 @@ using Transducers:
     retransform
 
 using ..FoldsThreads:
-    ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx, DepthFirstEx
+    DepthFirstEx,
+    FoldsThreads,
+    ThreadedNondeterministicEx,
+    ThreadedTaskPoolEx,
+    WorkStealingEx
 
 include("utils.jl")
 include("threading_utils.jl")
@@ -79,6 +83,7 @@ include("nondeterministic.jl")
 include("workstealing.jl")
 include("depthfirst.jl")
 include("spawnall.jl")
+include("misc.jl")
 
 function __init__()
     init_primary_task()
@@ -88,5 +93,7 @@ function __init__()
 end
 
 end  # module Implementations
+
+Implementations.define_docstrings()
 
 end
