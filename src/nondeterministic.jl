@@ -3,7 +3,9 @@ make_nondeterministicthreading(; basesize = 1, ntasks = Threads.nthreads(), kwar
 
 function Transducers.transduce(xf, rf, init, xs, ex::ThreadedNondeterministicEx)
     ndt, kwargs = make_nondeterministicthreading(; ex.kwargs...)
-    return transduce(xf ∘ ndt, rf, init, xs; kwargs...)
+    xf0, xs0 = extract_transducer(xs)
+    # TODO: don't assume all transducers are parallelizable
+    return transduce(xf ∘ xf0 ∘ ndt, rf, init, xs0; kwargs...)
 end
 
 # TODO: move ThreadedNondeterministicEx to this file
