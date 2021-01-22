@@ -23,117 +23,172 @@ end
 const WorkQueue = LockedLinkedList{Function}
 
 struct WorkerPool
-    tasks::Vector{Task}
+    tasks::Vector{Vector{Task}}
     queues::Vector{WorkQueue}
-    counter::Counter
+    occupied::Vector{Bool}
+    all_scheduled::Threads.Atomic{Bool}
 end
 
-struct Worker
-    id::Int
-    pool::WorkerPool
+function WorkerPool()
+    ntasks = Threads.nthreads()
+    tasks = [Task[] for _ in 1:ntasks]
+    queues = [WorkQueue() for _ in 1:ntasks]
+    occupied = zeros(Bool, ntasks)
+    all_scheduled = Threads.Atomic{Bool}(false)
+    return WorkerPool(tasks, queues, occupied, all_scheduled)
 end
 
 struct WSScheduler
+    pool::WorkerPool
     queue::WorkQueue
-    counter::Counter
 end
 
-WSScheduler(worker::Worker) =
-    WSScheduler(worker.pool.queues[worker.id], worker.pool.counter)
+WSScheduler(pool::WorkerPool = WorkerPool()) =
+    WSScheduler(pool, pool.queues[Threads.threadid()])
+
+function get_scheduler(sch::WSScheduler)
+    pool = sch.pool
+    pool.occupied[Threads.threadid()] && return
+    pool.occupied[Threads.threadid()] = true
+    return WSScheduler(pool, pool.queues[Threads.threadid()])
+end
+# TODO: Prepare for task migration; use local worker id instead of
+# Threads.threadid().
+
+push_task!(sch, task) = push!(sch.pool.tasks[Threads.threadid()], task)
+is_all_scheduled(sch::WSScheduler) = sch.pool.all_scheduled[]
+
+function task_spawn!(f, sch::WSScheduler)
+    task = Threads.@spawn begin
+        sch2 = get_scheduler(sch)
+        sch2 === nothing && return # retry?
+        f(sch2)
+        help_others(sch2)
+    end
+    push_task!(sch, task)
+    cons = listof(Function, f)
+    setcdr!(sch.queue, cons)
+    queue = setlist(sch.queue, cons)
+    return @set sch.queue = queue
+end
 
 function spawn!(f, sch::WSScheduler)
     cons = listof(Function, f)
     setcdr!(sch.queue, cons)
-    queue = WorkQueue(cons, sch.queue.lock)
+    queue = setlist(sch.queue, cons)
     return @set sch.queue = queue
 end
-
-finish_schedule!(c::Counter) = @assert try_inc_to!(c, typemax(Int)) === nothing
-is_all_scheduled(x::Int) = x == typemax(Int)
 
 """ Work-stealing (WS) divide-and-conquer (DAC) context """
 struct WSDACContext
     ctx::TaskContext
-    counter::Counter
+    all_scheduled::Threads.Atomic{Bool}
+    isright::Bool
+    ntasks::Int
 end
 
-WSDACContext(ctx::TaskContext, worker::Worker) = WSDACContext(ctx, worker.pool.counter)
+WSDACContext(ctx::TaskContext, sch::WSScheduler) =
+    WSDACContext(ctx, sch.pool.all_scheduled, true, Threads.nthreads() - 1)
 
 should_abort(ctx::WSDACContext) = should_abort(ctx.ctx)
-function cancel!(ctx::WSDACContext)
-    finish_schedule!(ctx.counter)
-    cancel!(ctx.ctx)
-end
+cancel!(ctx::WSDACContext) = cancel!(ctx.ctx)
 function splitcontext(ctx::WSDACContext)
     fg, bg = splitcontext(ctx.ctx)
-    return WSDACContext(fg, ctx.counter), WSDACContext(bg, ctx.counter)
+    nl = ctx.ntasks ÷ 2
+    nr = ctx.ntasks - nl
+    return (
+        WSDACContext(fg, ctx.all_scheduled, false, nl),
+        WSDACContext(bg, ctx.all_scheduled, ctx.isright, nr),
+    )
+end
+
+function on_basecase!(ctx::WSDACContext)
+    if ctx.isright
+        ctx.all_scheduled[] = true
+    end
+    return
 end
 
 function transduce_ws(ctx, rf, init, xs)
+    sch = WSScheduler()
     output = Promise()
-    pool = make_worker_pool() do worker
-        try
-            help_others(worker)
-        catch err
-            tryput!(output, Err(err))
-        end
-    end
-    queue = pool.queues[1]
-    worker = Worker(1, pool)
     try
-        transduce_ws_root(worker, ctx, output, rf, init, xs)
+        transduce_ws_root(sch, ctx, output, rf, init, xs)
     finally
-        close(pool)
+        close(sch.pool)
     end
     return something(tryfetch(output))[]
 end
 
-function make_worker_pool(f)
-    pool = WorkerPool(
-        Vector{Task}(undef, Threads.nthreads()),
-        Vector{WorkQueue}(undef, Threads.nthreads()),
-        Counter(),
-    )
-    pool.tasks[1] = current_task()
-    pool.queues[1] = WorkQueue()
-
-    go = Promise()
-    counter = Threads.Atomic{Int}(1)
-    id0 = Threads.threadid()
-    foreach_thread() do
-        id0 == Threads.threadid() && return
-        i = Threads.atomic_add!(counter, 1) + 1
-        worker = Worker(i, pool)
-        pool.queues[i] = WorkQueue()
-        pool.tasks[i] = @async try
-            fetch(go)
-            f(worker)
-        catch
-            close(pool)
+function Base.close(pool::WorkerPool)
+    pool.all_scheduled[] = true
+    foreach(empty!, pool.queues)
+    for tasks in pool.tasks
+        # TODO: make this thread-safe & merge all tasks
+        for t in tasks
+            wait(t)
         end
     end
-    n = counter[]
-    resize!(pool.queues, n)
-    resize!(pool.tasks, n)
-
-    tryput!(go, nothing)
-
-    return pool
 end
 
-function Base.close(pool::WorkerPool)
-    finish_schedule!(pool.counter)
-    foreach(empty!, pool.queues)
-end
-
-function transduce_ws_root(worker::Worker, ctx::TaskContext, output::Promise, rf, init, xs)
-    transduce_ws_cps_dac(WSScheduler(worker), WSDACContext(ctx, worker), true, rf, init, xs) do acc
+function transduce_ws_root(sch::WSScheduler, ctx::TaskContext, output::Promise, rf, init, xs)
+    transduce_ws_cps_dac1(sch, WSDACContext(ctx, sch), rf, init, xs) do acc
         tryput!(output, acc)
     end
     while true
         result = tryfetch(output)
         result === nothing || return something(result)
-        help_others_nonblocking(worker)
+        while help_others_nonblocking(sch)
+        end
+        yield()
+    end
+end
+
+function transduce_ws_cps_dac1(
+    @nospecialize(_return_),
+    sch::WSScheduler,
+    ctx::WSDACContext,
+    rf,
+    init,
+    xs,
+)
+    if ctx.ntasks <= 1 || issmall(xs)
+        return transduce_ws_cps_dac2(_return_, sch, ctx, rf, init, xs)
+    end
+    # @show ctx.ntasks
+    _return_ = DynamicFunction(_return_)
+
+    left, right = _halve(xs)
+    fg, bg = splitcontext(ctx)
+    started = Threads.Atomic{Int}(0)
+    bridge = Promise()
+    function continuation(sch, accl0)
+        transduce_ws_cps_dac1(sch, bg, rf, init, right) do accr
+            if accl0 === nothing
+                accl1 = tryput!(bridge, accr)
+                accl1 === nothing && return
+                accl = something(accl1)
+            else
+                accl = something(accl0)
+            end
+            _return_(_combine(ctx, rf, accl, accr))
+        end
+    end
+    sch1 = task_spawn!(sch) do sch
+        Threads.atomic_xchg!(started, 2) != 0 && return
+        continuation(sch, nothing)
+    end
+    transduce_ws_cps_dac1(sch1, fg, rf, init, left) do accl
+        if Threads.atomic_xchg!(started, 1) == 0  # self-steal
+            # Using `sch` instead of `sch1` here would "pop" the task that
+            # we just stole:
+            continuation(sch, Some(accl))
+        else
+            accr0 = tryput!(bridge, accl)
+            accr0 === nothing && return
+            accr = something(accr0)
+            _return_(_combine(ctx, rf, accl, accr))
+        end
     end
 end
 
@@ -144,18 +199,17 @@ Invariance: Once a function call of `transduce_ws_cps_dac` returns, all the
 spawned tasks (the immediate right nodes) are already started. Thus, we can
 safely "pop" the queue (i.e., use `setcdr!` in `spawn!`).
 """
-function transduce_ws_cps_dac(
+function transduce_ws_cps_dac2(
     @nospecialize(_return_),
     sch::WSScheduler,
     ctx::WSDACContext,
-    isright::Bool,
     rf,
     init,
     xs,
 )
     _return_ = DynamicFunction(_return_)
     if issmall(xs)
-        isright && finish_schedule!(sch.counter)
+        on_basecase!(ctx)
         result = try
             if should_abort(ctx)
                 _return_(Ok(init))
@@ -177,11 +231,11 @@ function transduce_ws_cps_dac(
         started = Threads.Atomic{Int}(0)
         bridge = Promise()
         function continuation(sch, accl0)
-            transduce_ws_cps_dac(sch, bg, isright, rf, init, right) do accr
+            transduce_ws_cps_dac2(sch, bg, rf, init, right) do accr
                 if accl0 === nothing
-                    accl0 = tryput!(bridge, accr)
-                    accl0 === nothing && return
-                    accl = something(accl0)
+                    accl1 = tryput!(bridge, accr)
+                    accl1 === nothing && return
+                    accl = something(accl1)
                 else
                     accl = something(accl0)
                 end
@@ -192,7 +246,7 @@ function transduce_ws_cps_dac(
             Threads.atomic_xchg!(started, 2) != 0 && return
             continuation(sch, nothing)
         end
-        transduce_ws_cps_dac(sch1, fg, false, rf, init, left) do accl
+        transduce_ws_cps_dac2(sch1, fg, rf, init, left) do accl
             if Threads.atomic_xchg!(started, 1) == 0  # self-steal
                 # Using `sch` instead of `sch1` here would "pop" the task that
                 # we just stole:
@@ -207,38 +261,31 @@ function transduce_ws_cps_dac(
     end
 end
 
-function help_others(worker::Worker)
-    counter = worker.pool.counter
-    lastvalue = counter[]
-    while true
-        n = 0
-        while true
-            if help_others_nonblocking(worker)
-                n = 0
-                continue
-            end
-            is_all_scheduled(lastvalue) && return
-            n += 1
-            n > 5 && break  # spin a bit; TODO: check if 5 makes sense.
+function help_others(sch::WSScheduler)
+    while !is_all_scheduled(sch)
+        while help_others_nonblocking(sch)
         end
-        lastvalue = wait_cross(counter, lastvalue + 1)
+        yield()
     end
 end
 
 """
-    help_others_nonblocking(worker, queue) -> should_continue::Bool
+    help_others_nonblocking(sch, queue) -> should_continue::Bool
 """
-function help_others_nonblocking(worker::Worker)
-    # TODO: randomize
-    queues = worker.pool.queues
-    others = Iterators.flatten((
-        view(queues, worker.id+1:lastindex(queues)),
-        view(queues, firstindex(queues):worker.id),
-    ))
-    for other in others
+function help_others_nonblocking(sch::WSScheduler)
+    queues = sch.pool.queues
+    for _ in 1:8*length(queues)
+        other = queues[Int(mod1(time_ns(), length(queues)))]
+        isempty(other) && continue  # racy lock-free check
         f = trypopfirst!(other)
         f === nothing && continue
-        something(f)(WSScheduler(worker))
+        something(f)(sch)
+        return true
+    end
+    for other in queues
+        f = trypopfirst!(other)
+        f === nothing && continue
+        something(f)(sch)
         return true
     end
     return false
