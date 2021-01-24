@@ -212,14 +212,14 @@ function transduce_ws_cps_dac2(
         on_basecase!(ctx)
         result = try
             if should_abort(ctx)
-                _return_(Ok(init))
-                return
+                Ok(init)
+            else
+                acc = _reduce_basecase(rf, init, xs)
+                if acc isa Reduced
+                    cancel!(ctx)
+                end
+                Ok(acc)
             end
-            acc = _reduce_basecase(rf, init, xs)
-            if acc isa Reduced
-                cancel!(ctx)
-            end
-            Ok(acc)
         catch err
             cancel!(ctx)
             Err(err)
