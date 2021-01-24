@@ -58,12 +58,28 @@ end
 push_task!(sch, task) = push!(sch.pool.tasks[Threads.threadid()], task)
 is_all_scheduled(sch::WSScheduler) = sch.pool.all_scheduled[]
 
-function task_spawn!(f, sch::WSScheduler)
-    task = Threads.@spawn begin
+""" Work-stealing (WS) divide-and-conquer (DAC) context """
+struct WSDACContext
+    ctx::TaskContext
+    output::Promise
+    all_scheduled::Threads.Atomic{Bool}
+    isright::Bool
+    ntasks::Int
+end
+
+WSDACContext(ctx::TaskContext, output::Promise, sch::WSScheduler) =
+    WSDACContext(ctx, output, sch.pool.all_scheduled, true, Threads.nthreads() - 1)
+
+function task_spawn!(f, sch::WSScheduler, ctx::WSDACContext)
+    output = ctx.output
+    task = Threads.@spawn try
         sch2 = get_scheduler(sch)
         sch2 === nothing && return # retry?
         f(sch2)
         help_others(sch2)
+    catch err
+        tryput!(output, Err(err))
+        rethrow()
     end
     push_task!(sch, task)
     cons = listof(Function, f)
@@ -79,17 +95,6 @@ function spawn!(f, sch::WSScheduler)
     return @set sch.queue = queue
 end
 
-""" Work-stealing (WS) divide-and-conquer (DAC) context """
-struct WSDACContext
-    ctx::TaskContext
-    all_scheduled::Threads.Atomic{Bool}
-    isright::Bool
-    ntasks::Int
-end
-
-WSDACContext(ctx::TaskContext, sch::WSScheduler) =
-    WSDACContext(ctx, sch.pool.all_scheduled, true, Threads.nthreads() - 1)
-
 should_abort(ctx::WSDACContext) = should_abort(ctx.ctx)
 cancel!(ctx::WSDACContext) = cancel!(ctx.ctx)
 function splitcontext(ctx::WSDACContext)
@@ -97,8 +102,8 @@ function splitcontext(ctx::WSDACContext)
     nl = ctx.ntasks ÷ 2
     nr = ctx.ntasks - nl
     return (
-        WSDACContext(fg, ctx.all_scheduled, false, nl),
-        WSDACContext(bg, ctx.all_scheduled, ctx.isright, nr),
+        WSDACContext(fg, ctx.output, ctx.all_scheduled, false, nl),
+        WSDACContext(bg, ctx.output, ctx.all_scheduled, ctx.isright, nr),
     )
 end
 
@@ -113,7 +118,7 @@ function transduce_ws(ctx, rf, init, xs)
     sch = WSScheduler()
     output = Promise()
     try
-        transduce_ws_root(sch, ctx, output, rf, init, xs)
+        transduce_ws_root(sch, WSDACContext(ctx, output, sch), rf, init, xs)
     finally
         close(sch.pool)
     end
@@ -131,8 +136,9 @@ function Base.close(pool::WorkerPool)
     end
 end
 
-function transduce_ws_root(sch::WSScheduler, ctx::TaskContext, output::Promise, rf, init, xs)
-    transduce_ws_cps_dac1(sch, WSDACContext(ctx, sch), rf, init, xs) do acc
+function transduce_ws_root(sch::WSScheduler, ctx::WSDACContext, rf, init, xs)
+    output = ctx.output
+    transduce_ws_cps_dac1(sch, ctx, rf, init, xs) do acc
         tryput!(output, acc)
     end
     while true
@@ -174,7 +180,7 @@ function transduce_ws_cps_dac1(
             _return_(_combine(ctx, rf, accl, accr))
         end
     end
-    sch1 = task_spawn!(sch) do sch
+    sch1 = task_spawn!(sch, ctx) do sch
         Threads.atomic_xchg!(started, 2) != 0 && return
         continuation(sch, nothing)
     end
