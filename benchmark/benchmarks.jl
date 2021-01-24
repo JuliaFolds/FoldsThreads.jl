@@ -1,3 +1,17 @@
+import FoldsThreadsExtras
+let actual = realpath(pathof(FoldsThreadsExtras)),
+    expected = realpath(joinpath(@__DIR__, "..", "src", "FoldsThreadsExtras.jl"))
+
+    if actual != expected
+        msg = ("FoldsThreadsExtras.jl loaded from an unexpected path. This may be due to" *
+            " misconfigured load-path.")
+        @warn msg actual expected
+        if get(ENV, "CHECK_LOAD_PATH", "false") == "true"
+            error(msg)
+        end
+    end
+end
+
 using BenchmarkTools
 SUITE = BenchmarkGroup()
 for file in readdir(@__DIR__)

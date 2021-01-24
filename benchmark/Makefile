@@ -1,5 +1,6 @@
 JULIA = julia
 JULIA_NUM_THREADS = 32
+export JULIA_LOAD_PATH = $(PWD)/..:
 
 TARGET = HEAD
 BASELINE = master
@@ -16,7 +17,7 @@ benchmark-%:
 
 build/benchmarkpkg/%.json:
 	@git rev-parse $*
-	JULIA_NUM_THREADS=$(JULIA_NUM_THREADS) $(JULIA) benchmarkpkg.jl $@ $*
+	JULIA_NUM_THREADS=$(JULIA_NUM_THREADS) CHECK_LOAD_PATH=true $(JULIA) benchmarkpkg.jl $@ $*
 
 report: build/report.md
 build/report.md: build/report-$(TARGET_REV)-$(BASELINE_REV).md
