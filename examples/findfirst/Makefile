@@ -1,11 +1,21 @@
-JULIA = julia
+JULIA = julia --startup-file=no
 
 JULIA_NUM_THREADS = 32
 export JULIA_NUM_THREADS
 
-build/analysis.ipynb: analysis.jl build/result.json runliterate.jl
-	$(JULIA) runliterate.jl $<
-	mv analysis.ipynb $@
+REV = HEAD
+GIT_SHA1 = $(shell git rev-parse $(REV))
 
-build/result.json:
+build/analysis.ipynb: build/revisions/$(GIT_SHA1)/analysis.ipynb
+	ln -sf revisions/$(GIT_SHA1)/analysis.ipynb $@
+
+build/revisions/$(GIT_SHA1)/analysis.ipynb: build/revisions/$(GIT_SHA1)/result.json analysis.jl
+	cp analysis.jl build/revisions/$(GIT_SHA1)/
+	(cd build/revisions/$(GIT_SHA1) && \
+		$(JULIA) -e 'using Literate; Literate.notebook("analysis.jl")')
+
+build/revisions/$(GIT_SHA1)/result.json:
+	@mkdir -pv "$$(dirname $@)"
+	@date > "$$(dirname $@)/started"
 	$(JULIA) runbenchmarks.jl $@
+	@date > "$$(dirname $@)/finished"

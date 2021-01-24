@@ -5,5 +5,7 @@ mkpath(dirname(resultpath))
 
 using BenchmarkTools
 include("benchmarks.jl")
-result = run(SUITE; verbose = true)
+_, time, = @timed result = run(SUITE; verbose = true)
 BenchmarkTools.save(resultpath, result)
+
+write(joinpath(dirname(resultpath), "time"), string(time))
