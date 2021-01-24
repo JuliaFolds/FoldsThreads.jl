@@ -138,9 +138,10 @@ end
 
 function transduce_ws_root(sch::WSScheduler, ctx::WSDACContext, rf, init, xs)
     output = ctx.output
-    transduce_ws_cps_dac1(sch, ctx, rf, init, xs) do acc
+    thunk = transduce_ws_cps_dac1(sch, ctx, rf, init, xs) do acc
         tryput!(output, acc)
     end
+    thunk()
     while true
         result = tryfetch(output)
         result === nothing || return something(result)
@@ -169,7 +170,7 @@ function transduce_ws_cps_dac1(
     started = Threads.Atomic{Int}(0)
     bridge = Promise()
     function continuation(sch, accl0)
-        transduce_ws_cps_dac1(sch, bg, rf, init, right) do accr
+        local thunk = transduce_ws_cps_dac1(sch, bg, rf, init, right) do accr
             if accl0 === nothing
                 accl1 = tryput!(bridge, accr)
                 accl1 === nothing && return
@@ -179,12 +180,13 @@ function transduce_ws_cps_dac1(
             end
             _return_(_combine(ctx, rf, accl, accr))
         end
+        thunk()
     end
     sch1 = task_spawn!(sch, ctx) do sch
         Threads.atomic_xchg!(started, 2) != 0 && return
         continuation(sch, nothing)
     end
-    transduce_ws_cps_dac1(sch1, fg, rf, init, left) do accl
+    return transduce_ws_cps_dac1(sch1, fg, rf, init, left) do accl
         if Threads.atomic_xchg!(started, 1) == 0  # self-steal
             # Using `sch` instead of `sch1` here would "pop" the task that
             # we just stole:
@@ -230,14 +232,16 @@ function transduce_ws_cps_dac2(
             cancel!(ctx)
             Err(err)
         end
-        _return_(result)
+        return function thunk()
+            _return_(result)
+        end
     else
         left, right = _halve(xs)
         fg, bg = splitcontext(ctx)
         started = Threads.Atomic{Int}(0)
         bridge = Promise()
         function continuation(sch, accl0)
-            transduce_ws_cps_dac2(sch, bg, rf, init, right) do accr
+            local thunk = transduce_ws_cps_dac2(sch, bg, rf, init, right) do accr
                 if accl0 === nothing
                     accl1 = tryput!(bridge, accr)
                     accl1 === nothing && return
@@ -247,12 +251,13 @@ function transduce_ws_cps_dac2(
                 end
                 _return_(_combine(ctx, rf, accl, accr))
             end
+            thunk()
         end
         sch1 = spawn!(sch) do sch
             Threads.atomic_xchg!(started, 2) != 0 && return
             continuation(sch, nothing)
         end
-        transduce_ws_cps_dac2(sch1, fg, rf, init, left) do accl
+        return transduce_ws_cps_dac2(sch1, fg, rf, init, left) do accl
             if Threads.atomic_xchg!(started, 1) == 0  # self-steal
                 # Using `sch` instead of `sch1` here would "pop" the task that
                 # we just stole:
