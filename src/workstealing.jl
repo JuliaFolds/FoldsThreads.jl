@@ -156,10 +156,10 @@ function transduce_ws_cps_dac1(
     chain::Cons{Function},
     sch::WSScheduler,
     ctx::WSDACContext,
-    rf,
+    rf::RF,
     init,
     xs,
-)
+) where {RF}
     if ctx.ntasks <= 1 || issmall(xs)
         return transduce_ws_cps_dac2(chain, sch, ctx, rf, init, xs)
     end
@@ -213,10 +213,10 @@ function transduce_ws_cps_dac2(
     chain::Cons{Function},
     sch::WSScheduler,
     ctx::WSDACContext,
-    rf,
+    rf::RF,
     init,
     xs,
-)
+) where {RF}
     if issmall(xs)
         on_basecase!(ctx)
         thunk() = try
