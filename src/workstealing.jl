@@ -74,6 +74,9 @@ function task_spawn!(f, sch::WSScheduler, ctx::WSDACContext)
     output = ctx.output
     task = Threads.@spawn try
         sch2 = get_scheduler(sch)
+        # if sch2 === nothing
+        #     @info "occupied!" Threads.threadid()
+        # end
         sch2 === nothing && return # retry?
         f(sch2)
         help_others(sch2)
@@ -99,8 +102,12 @@ should_abort(ctx::WSDACContext) = should_abort(ctx.ctx)
 cancel!(ctx::WSDACContext) = cancel!(ctx.ctx)
 function splitcontext(ctx::WSDACContext)
     fg, bg = splitcontext(ctx.ctx)
-    nl = ctx.ntasks ÷ 2
-    nr = ctx.ntasks - nl
+    if ctx.ntasks <= 1
+        nl = nr = 0
+    else
+        nl = ctx.ntasks ÷ 2
+        nr = ctx.ntasks - nl
+    end
     return (
         WSDACContext(fg, ctx.output, ctx.all_scheduled, false, nl),
         WSDACContext(bg, ctx.output, ctx.all_scheduled, ctx.isright, nr),
@@ -122,6 +129,9 @@ function transduce_ws(ctx, rf, init, xs)
     finally
         close(sch.pool)
     end
+    # let nused = sum(sch.pool.occupied)
+    #     @info "done" nused Threads.nthreads() nused == Threads.nthreads()
+    # end
     return something(tryfetch(output))[]
 end
 
@@ -160,7 +170,8 @@ function transduce_ws_cps_dac1(
     init,
     xs,
 ) where {RF}
-    if ctx.ntasks <= 1 || issmall(xs)
+    if ctx.ntasks <= Int(!ctx.isright) || issmall(xs)
+        # TODO: fix ctx.ntasks check
         return transduce_ws_cps_dac2(chain, sch, ctx, rf, init, xs)
     end
     # @show ctx.ntasks
