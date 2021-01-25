@@ -3,7 +3,7 @@ using DataFrames
 using Transducers
 using VegaLite
 
-resultpath = "result.json"
+resultpath = joinpath(@__DIR__, "result.json")
 result, = BenchmarkTools.load(resultpath)
 
 df_raw =

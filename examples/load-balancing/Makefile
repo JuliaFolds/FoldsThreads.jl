@@ -5,7 +5,7 @@ export JULIA_NUM_THREADS
 
 GIT_SHA1 := $(shell git rev-parse HEAD)
 
-.PHONY: notebook
+.PHONY: notebook rebuild-notebook
 
 notebook: build/analysis.ipynb build/revisions/$(GIT_SHA1)/analysis.ipynb
 
@@ -19,7 +19,11 @@ build/revisions/%/analysis.ipynb: build/revisions/%/result.json analysis.jl
 
 build/revisions/$(GIT_SHA1)/result.json:
 	@mkdir -pv "$$(dirname $@)"
+	@echo "$(GIT_SHA1)" > build/latest
 	@date > "$$(dirname $@)/started"
 	$(JULIA) runbenchmarks.jl $@
 	@date > "$$(dirname $@)/finished"
 	ln -sf $@ result.json
+
+rebuild-notebook:
+	$(MAKE) build/revisions/$(cat build/latest)/analysis.ipynb
