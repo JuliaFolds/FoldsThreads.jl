@@ -21,6 +21,7 @@ module Implementations
 using Base.Threads: @spawn
 
 using Accessors: @set
+using FunctionWrappers: FunctionWrapper
 using SplittablesBase: amount
 using Transducers:
     @return_if_reduced,

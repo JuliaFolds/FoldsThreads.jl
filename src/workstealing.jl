@@ -20,7 +20,8 @@ function _transduce_ws(
     return transduce_ws(TaskContext(), rf1, init, xs1)
 end
 
-const WorkQueue = LockedLinkedList{Function}
+const WorkUnit = FunctionWrapper{Nothing,Tuple{}}
+const WorkQueue = LockedLinkedList{WorkUnit}
 
 struct WorkerPool
     tasks::Vector{Vector{Task}}
@@ -85,14 +86,24 @@ function task_spawn!(f, sch::WSScheduler, ctx::WSDACContext)
         rethrow()
     end
     push_task!(sch, task)
-    cons = listof(Function, f)
+    pool = sch.pool
+    w = WorkUnit() do
+        f(WSScheduler(pool))
+        return
+    end
+    cons = listof(WorkUnit, w)
     setcdr!(sch.queue, cons)
     queue = setlist(sch.queue, cons)
     return @set sch.queue = queue
 end
 
 function spawn!(f, sch::WSScheduler)
-    cons = listof(Function, f)
+    pool = sch.pool
+    w = WorkUnit() do
+        f(WSScheduler(pool))
+        return
+    end
+    cons = listof(WorkUnit, w)
     setcdr!(sch.queue, cons)
     queue = setlist(sch.queue, cons)
     return @set sch.queue = queue
@@ -302,13 +313,13 @@ function help_others_nonblocking(sch::WSScheduler)
         isempty(other) && continue  # racy lock-free check
         f = trypopfirst!(other)
         f === nothing && continue
-        something(f)(sch)
+        something(f)()
         return true
     end
     for other in queues
         f = trypopfirst!(other)
         f === nothing && continue
-        something(f)(sch)
+        something(f)()
         return true
     end
     return false
