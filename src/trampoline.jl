@@ -15,8 +15,7 @@ function trampoline_fallback(chain, x)
             chain2 isa Nil && return
             chain = chain2
         elseif y isa Tuple{Cons{Function},Any}
-            chain, thunk = y
-            x = thunk()
+            chain, x = y
         else
             unexpected(y)
         end
@@ -95,8 +94,7 @@ end
                 chain2 isa Nil && return
                 chain = chain2
             elseif y isa Tuple{Cons{Function},Any}
-                chain, thunk = y
-                x = thunk()
+                chain, x = y
             else
                 unexpected(y)
             end

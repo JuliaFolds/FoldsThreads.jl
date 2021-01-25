@@ -202,12 +202,13 @@ function transduce_ws_cps_dac1(
             end
             return Some(_combine(ctx, rf, accl, accr))
         end
-        return transduce_ws_cps_dac1(chainr, sch, bg, rf, init, right)
+        chain2, thunk2 = transduce_ws_cps_dac1(chainr, sch, bg, rf, init, right)
+        return (chain2, thunk2())
     end
     sch1 = task_spawn!(sch, ctx) do sch
         Threads.atomic_xchg!(started, 2) != 0 && return
-        chain2, thunk2 = continuation(sch, nothing)
-        trampoline(chain2, thunk2())
+        chain2, x2 = continuation(sch, nothing)
+        trampoline(chain2, x2)
     end
     chainl = before(chain) do accl
         if Threads.atomic_xchg!(started, 1) == 0  # self-steal
@@ -272,12 +273,13 @@ function transduce_ws_cps_dac2(
                 end
                 return Some(_combine(ctx, rf, accl, accr))
             end
-            return transduce_ws_cps_dac2(chainr, sch, bg, rf, init, right)
+            chain2, thunk2 = transduce_ws_cps_dac2(chainr, sch, bg, rf, init, right)
+            return (chain2, thunk2())
         end
         sch1 = spawn!(sch) do sch
             Threads.atomic_xchg!(started, 2) != 0 && return
-            chain2, thunk2 = continuation(sch, nothing)
-            trampoline(chain2, thunk2())
+            chain2, x2 = continuation(sch, nothing)
+            trampoline(chain2, x2)
         end
         chainl = before(chain) do accl
             if Threads.atomic_xchg!(started, 1) == 0  # self-steal
