@@ -20,6 +20,13 @@ end
 
 check_threadids(ids) = length(Set(ids)) == length(ids)
 
+function nonsticky!(task)
+    task.sticky = false
+    return task
+end
+
+const SIMDFlag = Union{Bool, Symbol, Val{true}, Val{false}, Val{:ivdep}}
+
 struct Err{T}
     value::T
 end

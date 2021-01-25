@@ -1,6 +1,6 @@
 baremodule FoldsThreads
 
-export ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
+export ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx, DepthFirstEx
 
 import Transducers
 const FoldsBase = Transducers
@@ -14,6 +14,10 @@ struct ThreadedNondeterministicEx{K} <: FoldsBase.Executor
 end
 
 struct WorkStealingEx{K} <: FoldsBase.Executor
+    kwargs::K
+end
+
+struct DepthFirstEx{K} <: FoldsBase.Executor
     kwargs::K
 end
 
@@ -53,10 +57,12 @@ using Transducers:
     combine_right_reduced,
     extract_transducer,
     foldl_nocomplete,
+    maybe_usesimd,
     restack,
     retransform
 
-using ..FoldsThreads: ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
+using ..FoldsThreads:
+    ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx, DepthFirstEx
 
 include("utils.jl")
 include("threading_utils.jl")
@@ -67,6 +73,7 @@ include("dac.jl")
 include("taskpool.jl")
 include("nondeterministic.jl")
 include("workstealing.jl")
+include("depthfirst.jl")
 
 function __init__()
     init_primary_task()
