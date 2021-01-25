@@ -1,4 +1,4 @@
-module TestFoldsThreadsExtras
+module TestFoldsThreads
 using Test
 
 @testset "$file" for file in sort([

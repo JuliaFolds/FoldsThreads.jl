@@ -1,1 +1,1 @@
-# FoldsThreadsExtras: Extra threaded executors for JuliaFolds/*.jl
+# FoldsThreads: Extra threaded executors for JuliaFolds/*.jl

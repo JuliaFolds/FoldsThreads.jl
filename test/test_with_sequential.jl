@@ -1,6 +1,6 @@
 module TestWithSequential
 
-using FoldsThreadsExtras
+using FoldsThreads
 using Folds.Testing: test_with_sequential
 
 executors = [

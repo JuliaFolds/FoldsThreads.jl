@@ -1,4 +1,4 @@
-baremodule FoldsThreadsExtras
+baremodule FoldsThreads
 
 export ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
 
@@ -58,7 +58,7 @@ using Transducers:
     retransform
 import Transducers: cancel!, should_abort, splitcontext
 
-using ..FoldsThreadsExtras: ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
+using ..FoldsThreads: ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
 
 include("utils.jl")
 include("linkedlist.jl")

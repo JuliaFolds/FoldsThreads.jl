@@ -57,12 +57,12 @@ uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
-[[FoldsThreadsExtras]]
+[[FoldsThreads]]
 deps = ["Transducers"]
 git-tree-sha1 = "aaa50605ea7194f96210d5707d20447928108470"
 repo-rev = "master"
 repo-url = "../../.."
-uuid = "0b9379b8-075f-4c58-8222-3c77c9364ad9"
+uuid = "9c68100b-dfe1-47cf-94c8-95104e173443"
 version = "0.1.0"
 
 [[Future]]

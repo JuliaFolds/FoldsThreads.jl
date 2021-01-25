@@ -1,6 +1,6 @@
 using BenchmarkTools
 using Folds
-using FoldsThreadsExtras
+using FoldsThreads
 
 const SUITE = BenchmarkGroup()
 const DATA_LENGTH = 2^25
