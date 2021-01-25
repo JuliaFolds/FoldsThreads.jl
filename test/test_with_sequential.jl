@@ -16,6 +16,8 @@ executors = [
     WorkStealingEx(basesize = 3),
     DepthFirstEx(),
     DepthFirstEx(basesize = 3),
+    SpawnAllEx(),
+    SpawnAllEx(basesize = 3),
 ]
 
 if Threads.nthreads() > 1

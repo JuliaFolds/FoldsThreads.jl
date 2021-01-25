@@ -53,6 +53,18 @@ function cancel!(ctx::CancellableDACContext)
     end
 end
 
+function combine_all(rf, results)
+    step = combine_step(rf)
+    return transduce(ensurerf(Completing(step)), Init(step), results)
+end
+
+combine_step(rf) =
+    asmonoid() do a0, b0
+        a = @return_if_reduced a0
+        b0 isa Reduced && return combine_right_reduced(rf, a, b0)
+        return combine(rf, a, b0)
+    end
+
 @noinline _reduce_basecase(rf::F, init::I, reducible) where {F,I} =
     restack(foldl_nocomplete(rf, start(rf, init), foldable(reducible)))
 # `restack` here is crucial when using heap-allocated accumulator.
