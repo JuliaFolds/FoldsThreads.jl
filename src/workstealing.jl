@@ -315,12 +315,14 @@ function help_others_nonblocking(sch::WSScheduler)
         isempty(other) && continue  # racy lock-free check
         f = trypopfirst!(other)
         f === nothing && continue
+        # @info "RACY: $(Threads.threadid()) stole $(objectid(f))"
         something(f)()
         return true
     end
     for other in queues
         f = trypopfirst!(other)
         f === nothing && continue
+        # @info "SEQ: $(Threads.threadid()) stole $(objectid(f))"
         something(f)()
         return true
     end
