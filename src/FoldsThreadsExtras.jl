@@ -61,6 +61,7 @@ using ..FoldsThreadsExtras: ThreadedNondeterministicEx, ThreadedTaskPoolEx, Work
 
 include("utils.jl")
 include("linkedlist.jl")
+include("trampoline.jl")
 include("root_spawners.jl")
 include("dac.jl")
 include("taskpool.jl")
