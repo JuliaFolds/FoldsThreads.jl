@@ -19,7 +19,7 @@ function transduce_taskpool(
     xs1 = SizedReducible(xs0, basesize)
     return transduce_dac(
         TaskPoolScheduler(ntasks, background),
-        TaskContext(),
+        CancellableDACContext(),
         rf1,
         init,
         xs1,

@@ -22,7 +22,7 @@ using Base.Threads: @spawn
 
 using Accessors: @set
 using FunctionWrappers: FunctionWrapper
-using SplittablesBase: amount
+using SplittablesBase: amount, halve
 using Transducers:
     @return_if_reduced,
     Executor,
@@ -47,20 +47,18 @@ using Transducers:
     DefaultInitOf,
     EmptyResultError,
     IdentityTransducer,
-    SizedReducible,
-    TaskContext,
-    _halve,
-    _reduce_basecase,
+    Reducible,
     _reducingfunction,
     combine_right_reduced,
     extract_transducer,
-    issmall,
+    foldl_nocomplete,
+    restack,
     retransform
-import Transducers: cancel!, should_abort, splitcontext
 
 using ..FoldsThreads: ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
 
 include("utils.jl")
+include("threading_utils.jl")
 include("linkedlist.jl")
 include("trampoline.jl")
 include("root_spawners.jl")

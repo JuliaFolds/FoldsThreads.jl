@@ -17,7 +17,7 @@ function _transduce_ws(
         basesize = amount(xs0) ÷ Threads.nthreads()
     end
     xs1 = SizedReducible(xs0, basesize)
-    return transduce_ws(TaskContext(), rf1, init, xs1)
+    return transduce_ws(CancellableDACContext(), rf1, init, xs1)
 end
 
 const WorkUnit = FunctionWrapper{Nothing,Tuple{}}
@@ -60,15 +60,15 @@ push_task!(sch, task) = push!(sch.pool.tasks[Threads.threadid()], task)
 is_all_scheduled(sch::WSScheduler) = sch.pool.all_scheduled[]
 
 """ Work-stealing (WS) divide-and-conquer (DAC) context """
-struct WSDACContext
-    ctx::TaskContext
+struct WSDACContext{C <: DACContext}
+    ctx::C
     output::Promise
     all_scheduled::Threads.Atomic{Bool}
     isright::Bool
     ntasks::Int
 end
 
-WSDACContext(ctx::TaskContext, output::Promise, sch::WSScheduler) =
+WSDACContext(ctx::DACContext, output::Promise, sch::WSScheduler) =
     WSDACContext(ctx, output, sch.pool.all_scheduled, true, Threads.nthreads() - 1)
 
 function task_spawn!(f, sch::WSScheduler, ctx::WSDACContext)
