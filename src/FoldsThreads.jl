@@ -48,6 +48,7 @@ using Transducers:
     EmptyResultError,
     IdentityTransducer,
     Reducible,
+    _might_return_reduced,
     _reducingfunction,
     combine_right_reduced,
     extract_transducer,

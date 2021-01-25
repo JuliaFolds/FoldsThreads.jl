@@ -8,6 +8,7 @@ function _transduce_ws(
     xs;
     simd = Val(false),
     basesize::Union{Nothing,Integer} = nothing,
+    stoppable::Union{Bool,Nothing} = nothing,
     # ntasks::Int = Threads.nthreads(),
     # background::Bool = false,
 )
@@ -17,7 +18,15 @@ function _transduce_ws(
         basesize = amount(xs0) ÷ Threads.nthreads()
     end
     xs1 = SizedReducible(xs0, basesize)
-    return transduce_ws(CancellableDACContext(), rf1, init, xs1)
+    if stoppable === nothing
+        stoppable = _might_return_reduced(rf1, init, xs0)
+    end
+    if stoppable
+        ctx = CancellableDACContext()
+    else
+        ctx = NoopDACContext()
+    end
+    return transduce_ws(ctx, rf1, init, xs1)
 end
 
 const WorkUnit = FunctionWrapper{Nothing,Tuple{}}
