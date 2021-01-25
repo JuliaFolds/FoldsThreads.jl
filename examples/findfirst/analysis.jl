@@ -12,7 +12,7 @@ df_raw =
         (
             basesize = parse(Int, basesize),
             needleloc = parse(Int, needleloc),
-            executor = ex,
+            executor = Symbol(ex),
             trial = trial,
         )
     end |>
@@ -20,69 +20,70 @@ df_raw =
 #-
 
 begin
-    df_stats = select(df_raw, Not(:trial))
-    df_stats[!, :time_ns] = map(trial -> minimum(trial).time, df_raw.trial)
-    df_stats[!, :memory] = map(trial -> trial.memory, df_raw.trial)
-    df_stats
-end
-#-
-
-df = combine(groupby(df_stats, [:basesize, :needleloc])) do group
-    d = Dict(zip(group.executor, group.time_ns))
-    (speedup = d["ThreadedEx"] / d["WorkStealingEx"],
-    speedup_nonstoppable = d["ThreadedEx-stoppable=false"] / d["WorkStealingEx"],
+    df_tmp = select(df_raw, Not(:trial))
+    df_tmp[!, :minimum] = map(trial -> minimum(trial).time, df_raw.trial)
+    df_tmp[!, :median] = map(trial -> median(trial).time, df_raw.trial)
+    df_tmp[!, :memory] = map(trial -> trial.memory, df_raw.trial)
+    df_stats = stack(
+        df_tmp,
+        [:minimum, :median],
+        variable_name = :time_stat,
+        value_name = :time_ns,
     )
 end
 #-
 
+begin
+    df = transform(groupby(df_stats, [:basesize, :needleloc, :time_stat])) do group
+        baseline = only(eachrow(filter(:executor => ==(:ThreadedEx), group)))
+        (speedup = baseline.time_ns ./ group.time_ns,)
+    end
+    filter!(:executor => !(==(:ThreadedEx)), df)
+    df
+end
+#-
+
 plt1 = @vlplot(
-    layer = [
-        {
-            mark = {type = :line, point = true},
-            encoding = {
-                x = {field = :needleloc},
-                y = {field = :speedup, axis = {title = "Speedup (T_default / T_WS)"}},
-                color = {field = :basesize, type = :nominal},
+    facet = {row = {field = :executor, type = :nominal}, column = {field = :time_stat, type = :nominal}},
+    spec = {
+        layer = [
+            {
+                mark = {type = :line, point = true},
+                encoding = {
+                    x = {field = :needleloc, scale = {type = :log, base = 2}},
+                    y = {field = :speedup, axis = {title = "Speedup (T_default / T_\$executor)"}},
+                    color = {field = :basesize, type = :nominal},
+                },
             },
-        },
-        {
-            mark = :rule,
-            encoding = {y = {datum = 1}},
-        },
-    ],
+            {
+                mark = :rule,
+                encoding = {y = {datum = 1}},
+            },
+        ],
+    },
     data = df,
-    width = 400,
-    height = 200,
 )
 #-
 
 plt2 = @vlplot(
-    layer = [
-        {
-            mark = {type = :line, point = true},
-            encoding = {
-                x = {field = :needleloc},
-                y = {field = :speedup_nonstoppable, axis = {title = "Speedup (T_nonstoppable / T_WS)"}},
-                color = {field = :basesize, type = :nominal},
-            },
-        },
-        {
-            mark = :rule,
-            encoding = {y = {datum = 1}},
-        },
-    ],
-    data = df,
-    width = 400,
-    height = 200,
+    mark = {type = :line, point = true},
+    x = {field = :needleloc, scale = {type = :log, base = 2}},
+    y = {field = :time_ns, axis = {title = "Time [ns]"}},
+    color = {field = :basesize, type = :nominal},
+    row = :executor,
+    column = :time_stat,
+    resolve = {scale = {y = "independent"}},
+    data = df_stats,
 )
 #-
 
 plt3 = @vlplot(
-    mark = {type = :line, point = true},
-    x = :needleloc,
-    y = {field = :time_ns, axis = {title = "Time [ns]"}},
+    mark = {type = :line, point = true, clip = true},
+    x = {field = :needleloc, scale = {type = :log, base = 2}},
+    y = {field = :time_ns, axis = {title = "Time [ns]"}, scale = {domain = [0, 800_000]}},
     color = {field = :basesize, type = :nominal},
-    column = :executor,
+    row = :executor,
+    column = :time_stat,
     data = df_stats,
 )
 #-
