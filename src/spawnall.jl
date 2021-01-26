@@ -1,3 +1,14 @@
+"""
+    SpawnAllEx
+
+Spawn all tasks first and then fetch all of them.  Currently, there is
+no use-case in which this executor performs better than other executors
+(and thus it is not exported).
+"""
+struct SpawnAllEx{K} <: Executor
+    kwargs::K
+end
+
 Transducers.transduce(xf, rf, init, xs, ex::SpawnAllEx) =
     _transduce_spawnall(xf, rf, init, xs; ex.kwargs...)
 

@@ -1,7 +1,6 @@
 baremodule FoldsThreads
 
-export ThreadedNondeterministicEx,
-    ThreadedTaskPoolEx, WorkStealingEx, DepthFirstEx, SpawnAllEx
+export DepthFirstEx, ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx
 
 import Transducers
 const FoldsBase = Transducers
@@ -19,10 +18,6 @@ struct WorkStealingEx{K} <: FoldsBase.Executor
 end
 
 struct DepthFirstEx{K} <: FoldsBase.Executor
-    kwargs::K
-end
-
-struct SpawnAllEx{K} <: FoldsBase.Executor
     kwargs::K
 end
 
@@ -71,11 +66,7 @@ using Transducers:
     retransform
 
 using ..FoldsThreads:
-    ThreadedNondeterministicEx,
-    ThreadedTaskPoolEx,
-    WorkStealingEx,
-    DepthFirstEx,
-    SpawnAllEx
+    ThreadedNondeterministicEx, ThreadedTaskPoolEx, WorkStealingEx, DepthFirstEx
 
 include("utils.jl")
 include("threading_utils.jl")

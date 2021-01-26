@@ -1,6 +1,7 @@
 module TestWithSequential
 
 using FoldsThreads
+using FoldsThreads.Implementations: SpawnAllEx
 using Folds.Testing: test_with_sequential
 
 executors = [
