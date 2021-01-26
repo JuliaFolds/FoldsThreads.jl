@@ -1,7 +1,9 @@
 # FoldsThreads: Extra threaded executors for JuliaFolds/*.jl
 
-FoldsThreads.jl provides extra thread-based executors usable with
-various JuliaFolds/*.jl packages:
+FoldsThreads.jl provides extra thread-based executors usable with various
+JuliaFolds/*.jl packages such as
+[Transducers.jl](https://github.com/JuliaFolds/Transducers.jl) and
+[FLoops.jl](https://github.com/JuliaFolds/FLoops.jl).
 
 ```
                                   Executors
