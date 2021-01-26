@@ -7,7 +7,7 @@ various JuliaFolds/*.jl packages:
   Useful for load-balancing.
 * `DepthFirstEx` implements depth-first scheduling. Useful for `findfirst`-type
   computations.
-* `ThreadedTaskPoolEx`: Task pool executor. Useful for fine execution control
+* `TaskPoolEx`: Task pool executor. Useful for fine execution control
   (e.g., back pressure and "background" threads).
-* `ThreadedNondeterministicEx`: An executor for parallelizing computations with
+* `NondeterministicEx`: An executor for parallelizing computations with
   non-parallelizable iterators.

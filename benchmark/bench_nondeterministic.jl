@@ -10,7 +10,7 @@ demo(ex) = Folds.sum(partially_parallelizable(Iterators.Stateful(1:100)), ex)
 
 const SUITE = BenchmarkGroup()
 SUITE["seq"] = @benchmarkable(demo(SequentialEx()))
-SUITE["nondet"] = @benchmarkable(demo(ThreadedNondeterministicEx()))
+SUITE["nondet"] = @benchmarkable(demo(NondeterministicEx()))
 
 end  # module
 BenchNondeterministic.SUITE

@@ -1,4 +1,4 @@
-    ThreadedTaskPoolEx(; [simd,] [basesize,] [ntasks,] [background,])
+    TaskPoolEx(; [simd,] [basesize,] [ntasks,] [background,])
 
 Executor using pooled tasks for reduction. Useful for reductions with I/O and
 managing back pressure. With `background = true`, it can also be used to
@@ -11,7 +11,7 @@ latency-oriented tasks.
 julia> using FoldsThreads
        using Folds
 
-julia> Folds.sum(i -> gcd(i, 42), 1:1000_000, ThreadedTaskPoolEx())
+julia> Folds.sum(i -> gcd(i, 42), 1:1000_000, TaskPoolEx())
 4642844
 ```
 
@@ -34,7 +34,7 @@ assigning a task to a dedicated thread is stolen from ThreadPools.jl.
     _prevent_ Julia runtime from doing the right thing for managing tasks.
     Ideally, the library user should be able to pass an executor as an
     argument so that your library function can be used with any executors
-    including `ThreadedTaskPoolEx`.
+    including `TaskPoolEx`.
 
 ## Keyword Arguments
 - `background = false`: Do not run tasks on `threadid() == 1`.
@@ -50,7 +50,7 @@ assigning a task to a dedicated thread is stolen from ThreadPools.jl.
 julia> using FoldsThreads
        using FLoops
 
-julia> @floop ThreadedTaskPoolEx() for x in 1:1000_000
+julia> @floop TaskPoolEx() for x in 1:1000_000
            y = gcd(x, 42)
            @reduce(acc += y)
        end

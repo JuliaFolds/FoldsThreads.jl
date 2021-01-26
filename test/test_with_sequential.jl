@@ -5,14 +5,14 @@ using FoldsThreads.Implementations: SpawnAllEx
 using Folds.Testing: test_with_sequential
 
 executors = [
-    ThreadedNondeterministicEx(),
-    ThreadedNondeterministicEx(ntasks = 2),
-    ThreadedNondeterministicEx(basesize = 3),
-    ThreadedNondeterministicEx(basesize = 3, ntasks = 2),
-    ThreadedTaskPoolEx(),
-    ThreadedTaskPoolEx(ntasks = 2),
-    ThreadedTaskPoolEx(basesize = 3),
-    ThreadedTaskPoolEx(basesize = 3, ntasks = 2),
+    NondeterministicEx(),
+    NondeterministicEx(ntasks = 2),
+    NondeterministicEx(basesize = 3),
+    NondeterministicEx(basesize = 3, ntasks = 2),
+    TaskPoolEx(),
+    TaskPoolEx(ntasks = 2),
+    TaskPoolEx(basesize = 3),
+    TaskPoolEx(basesize = 3, ntasks = 2),
     WorkStealingEx(),
     WorkStealingEx(basesize = 3),
     DepthFirstEx(),
@@ -25,8 +25,8 @@ if Threads.nthreads() > 1
     append!(
         executors,
         [
-            ThreadedTaskPoolEx(background = true, basesize = 3),
-            ThreadedTaskPoolEx(background = true, basesize = 3, ntasks = 2),
+            TaskPoolEx(background = true, basesize = 3),
+            TaskPoolEx(background = true, basesize = 3, ntasks = 2),
         ],
     )
 end

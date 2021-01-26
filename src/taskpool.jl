@@ -1,4 +1,4 @@
-Transducers.transduce(xf, rf, init, xs, ex::ThreadedTaskPoolEx) =
+Transducers.transduce(xf, rf, init, xs, ex::TaskPoolEx) =
     transduce_taskpool(xf, rf, init, xs; ex.kwargs...)
 
 function transduce_taskpool(
