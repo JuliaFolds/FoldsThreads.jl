@@ -3,6 +3,22 @@
 FoldsThreads.jl provides extra thread-based executors usable with
 various JuliaFolds/*.jl packages:
 
+```
+                                  Executors
+                           ,----------------------.
+     Algorithms            |    FoldsThreads.jl    |         Data structures
+,------------------.       |-----------------------|       ,-----------------.
+|  FLoops,         |       |  ThreadedEx*          |       |  Array,         |
+|  Folds,          |       |  WorkStealingEx,      |       |  Tables,        |
+|  Transducers,    |  ---  |  DepthFirstEx,        |  ---  |  FGenerators,   |
+|  OnlineStats,    |       |  TaskPoolEx,          |       |  Dict,          |
+|  DataTools, ...  '       |  NondeterministicEx,  |       |  Set, ...       |
+`------------------'       |  ...                  |       `-----------------'
+                           `-----------------------'
+```
+
+(* `ThreadedEx` is the default executor provided by Transducers.jl)
+
 * `WorkStealingEx` implements work stealing (continuation stealing).
   Useful for load-balancing.
 * `DepthFirstEx` implements depth-first scheduling. Useful for `findfirst`-type
