@@ -36,14 +36,6 @@ assigning a task to a dedicated thread is stolen from ThreadPools.jl.
     argument so that your library function can be used with any executors
     including `TaskPoolEx`.
 
-## Keyword Arguments
-- `background = false`: Do not run tasks on `threadid() == 1`.
-- `ntasks`: The number of tasks to be used.
-- `basesize`: The size of base case.
-- `simd`: `false`, `true`, `:ivdep`, or `Val` of one of them.  If
-  `true`/`:ivdep`, the inner-most loop of each base case is annotated
-  by `@simd`/`@simd ivdep`.  Use a plain loop if `false` (default).
-
 ## More examples
 
 ```julia
@@ -57,3 +49,12 @@ julia> @floop TaskPoolEx() for x in 1:1000_000
        acc
 4642844
 ```
+
+## Keyword Arguments
+- `background = false`: If `background == true`, do not run tasks on
+  `threadid() == 1`.
+- `ntasks`: The number of tasks to be used.
+- `basesize`: The size of base case.
+- `simd`: `false`, `true`, `:ivdep`, or `Val` of one of them.  If
+  `true`/`:ivdep`, the inner-most loop of each base case is annotated
+  by `@simd`/`@simd ivdep`.  Use a plain loop if `false` (default).
