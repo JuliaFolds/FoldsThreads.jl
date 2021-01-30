@@ -19,6 +19,8 @@ executors = [
     DepthFirstEx(basesize = 3),
     SpawnAllEx(),
     SpawnAllEx(basesize = 3),
+    NonThreadedEx(),
+    NonThreadedEx(basesize = 3),
 ]
 
 if Threads.nthreads() > 1
