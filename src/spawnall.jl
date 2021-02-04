@@ -48,6 +48,7 @@ end
 function schedule_reduce!(tasks, ctx, rf::R, init::I, reducible::Reducible) where {R,I}
     if issmall(reducible)
         t = @spawn begin
+            should_abort(ctx) && return init
             acc = _reduce_basecase(rf, init, reducible)
             if acc isa Reduced
                 cancel!(ctx)
