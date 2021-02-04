@@ -1,3 +1,15 @@
+# This is not the usual style of trampoline (thunk-returning functions) and
+# maybe there's a better name (pop-call-append?). We do not transform the
+# recursion fully to a loop for work-stealing scheduler. Until the first
+# base case (initial decent), the recursion is used as usual (so still consumes
+# O(log2 n) stack space). The required amount of stack space is comparable to
+# other divide-and-conquer implementations. The idea/assumption is that it
+# _might_ be a good idea to keep the recursion so that the compiler can infer
+# types in many cases (TODO: check this). Once the call stack is constructed by
+# the recursion, the continuations in the chain (cactus stack) are evaluated in
+# a loop ("trampoline"). That said, it'd be interesting to see if the standard
+# trampoline has some performance/implementation advantages.
+
 and_finally(@nospecialize f) = listof(Function, f)
 
 before(@nospecialize(f), chain::List{Function}) = Cons{Function}(f, chain)
