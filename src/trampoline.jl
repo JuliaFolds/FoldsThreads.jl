@@ -66,15 +66,18 @@ end
         # tuple of union? falling back...
         return :(trampoline_fallback(chain, x))
     end
-    if length(ftypes) * length(xtypes) > 16
-        return :(trampoline_fallback(chain, x))
+
+    if length(ftypes) * length(xtypes) < 16
+        # Recurse to re-stabilize:
+        otherwise = quote
+            return trampoline_stabilizing(chain, x, Union{typeof(f),TF}, Union{typeof(x),TX})
+        end
+    else
+        # Too many recursions. Just keep going:
+        otherwise = :(y = f(x))
     end
 
-    recurse = quote
-        return trampoline_stabilizing(chain, x, Union{typeof(f),TF}, Union{typeof(x),TX})
-    end
-
-    fbranches = foldr(ftypes, init = recurse) do ft, ex
+    fbranches = foldr(ftypes, init = otherwise) do ft, ex
         quote
             if f isa $ft
                 y = f(x)
@@ -83,7 +86,7 @@ end
             end
         end
     end
-    xbranches = foldr(xtypes, init = recurse) do xt, ex
+    xbranches = foldr(xtypes, init = otherwise) do xt, ex
         quote
             if x isa $xt
                 $fbranches
