@@ -142,11 +142,9 @@ uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 version = "0.2.2"
 
 [[InitialValues]]
-git-tree-sha1 = "7555b049a8051924ade47899dd57bf01d3daaab6"
-repo-rev = "remotes/cache/pull/64/head"
-repo-url = "https://github.com/JuliaFolds/InitialValues.jl.git"
+git-tree-sha1 = "40c555f961d7ccf86d8ccd150b9eef379cbfa0a3"
 uuid = "22cec73e-a1b8-11e9-2c92-598750a2cf9c"
-version = "0.3.0-DEV"
+version = "0.3.0"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
