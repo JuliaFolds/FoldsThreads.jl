@@ -12,7 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        julia-version: ['1.6', '1.5', 'nightly']
+        julia-version:
+          - '1.7'
+          - '1.6'
+          - '1.5'
+          - 'nightly'
       fail-fast: false
     name: Test Julia ${{ matrix.julia-version }}
     steps:
